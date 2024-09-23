@@ -1,3 +1,4 @@
+
 import numpy as np
 from scipy.optimize import minimize
 from pymoo.core.problem import Problem
@@ -10,7 +11,7 @@ from pymoo.visualization.scatter import Scatter
 # 这里定义一个占位符函数，实际应使用训练好的模型
 def P_loss(T, f, waveform, B_peak, material):
     # 示例损耗模型
-    return (B_peak ** 2) * f * np.exp(-T / 100) * (1 if waveform == 'sin' else 1.5) * (1.2 if material == 'material1' else 1.0)
+    # return (B_peak ** 2) * f * np.exp(-T / 100) * (1 if waveform == 'sin' else 1.5) * (1.2 if material == 'material1' else 1.0)
 
 # 传输磁能的定义
 def E_trans(f, B_peak):
