@@ -1,0 +1,61 @@
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.core.problem import Problem
+from pymoo.optimize import minimize
+from pymoo.visualization.scatter import Scatter
+import numpy as np
+
+# 假设之前训练的随机森林模型作为预测函数
+# 这里使用占位符函数来模拟模型预测，实际使用中应替换为训练好的模型
+def P_loss_model(T, f, waveform, B_peak, material):
+    # 在此调用实际的随机森林模型进行预测
+    # X = np.array([T, f, waveform, B_peak, material]).reshape(1, -1)
+    # return trained_model.predict(X)[0]
+    return np.random.uniform(1e3, 1e4)  # 随机占位符
+
+# 定义优化问题
+class MagneticComponentOptimization(Problem):
+
+    def __init__(self):
+        super().__init__(
+            n_var=5,
+            n_obj=2,
+            n_constr=0,
+            xl=np.array([25, 1e3, 0, 0.1, 0]),  # 温度, 频率, 励磁波形, 磁通密度峰值, 材料
+            xu=np.array([100, 1e5, 1, 1.2, 3])
+        )
+
+    def _evaluate(self, X, out, *args, **kwargs):
+        T = X[:, 0]
+        f = X[:, 1]
+        waveform = X[:, 2]
+        B_peak = X[:, 3]
+        material = X[:, 4]
+
+        # 计算磁芯损耗和传输磁能
+        loss = np.array([P_loss_model(T[i], f[i], waveform[i], B_peak[i], material[i]) for i in range(len(T))])
+        trans_energy = f * B_peak
+
+        # 优化目标
+        out["F"] = np.column_stack([loss, -trans_energy])  # 传输磁能最大化，因此取负
+
+# 创建优化问题实例
+problem = MagneticComponentOptimization()
+
+# 定义优化算法
+algorithm = NSGA2(pop_size=100)
+
+# 运行优化
+res = minimize(problem,
+               algorithm,
+               ('n_gen', 200),
+               verbose=True,
+               seed=1)
+
+# 可视化Pareto前沿
+plot = Scatter()
+plot.add(res.F)
+plot.show()
+
+# 输出最优解的特征值组合
+for i, X in enumerate(res.X):
+    print(f"Solution {i+1}: Temperature={X[0]}, Frequency={X[1]}, Waveform={'sin' if X[2] == 0 else 'square'}, B_peak={X[3]}, Material={'Material1' if X[4] == 0 else 'Material2' if X[4] == 1 else 'Material3' if X[4] == 2 else 'Material4'}")
