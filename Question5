@@ -1,0 +1,65 @@
+import numpy as np
+from scipy.optimize import minimize
+from pymoo.core.problem import Problem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.optimize import minimize as moo_minimize
+from pymoo.visualization.scatter import Scatter
+
+# 假设我们已经有了磁芯损耗的预测模型 P_loss
+# 例如, P_loss(T, f, waveform, B_peak, material)
+# 这里定义一个占位符函数，实际应使用训练好的模型
+def P_loss(T, f, waveform, B_peak, material):
+    # 示例损耗模型
+    return (B_peak ** 2) * f * np.exp(-T / 100) * (1 if waveform == 'sin' else 1.5) * (1.2 if material == 'material1' else 1.0)
+
+# 传输磁能的定义
+def E_trans(f, B_peak):
+    return f * B_peak
+
+# 多目标优化问题的定义
+class MagneticComponentOptimization(Problem):
+
+    def __init__(self):
+        super().__init__(
+            n_var=5,
+            n_obj=2,
+            n_constr=0,
+            xl=np.array([25, 1e3, 0, 0.1, 0]),  # 温度 [25, 100]，频率 [1kHz, 100kHz]，波形 {0: 'sin', 1: 'square'}，磁通密度 [0.1, 1.2]，材料 {0: 'material1', 1: 'material2'}
+            xu=np.array([100, 1e5, 1, 1.2, 1])
+        )
+
+    def _evaluate(self, X, out, *args, **kwargs):
+        T = X[:, 0]
+        f = X[:, 1]
+        waveform = np.array(['sin' if w == 0 else 'square' for w in X[:, 2]])
+        B_peak = X[:, 3]
+        material = np.array(['material1' if m == 0 else 'material2' for m in X[:, 4]])
+
+        # 计算损耗和传输磁能
+        loss = np.array([P_loss(T[i], f[i], waveform[i], B_peak[i], material[i]) for i in range(len(T))])
+        trans_energy = np.array([E_trans(f[i], B_peak[i]) for i in range(len(f))])
+
+        # 第一个目标：最小化损耗
+        out["F"] = np.column_stack([loss, -trans_energy])  # 注意：我们在这里最大化传输磁能，故取负
+
+# 创建优化问题实例
+problem = MagneticComponentOptimization()
+
+# 定义优化算法
+algorithm = NSGA2(pop_size=100)
+
+# 运行优化
+res = moo_minimize(problem,
+                   algorithm,
+                   ('n_gen', 200),
+                   verbose=True,
+                   seed=1)
+
+# 结果可视化
+plot = Scatter()
+plot.add(res.F)
+plot.show()
+
+# 输出最优解
+for i, X in enumerate(res.X):
+    print(f"Solution {i+1}: Temperature={X[0]}, Frequency={X[1]}, Waveform={'sin' if X[2] == 0 else 'square'}, B_peak={X[3]}, Material={'material1' if X[4] == 0 else 'material2'}")
