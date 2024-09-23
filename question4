@@ -6,11 +6,43 @@ from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, r2_score
 import numpy as np
 
+import pandas as pd
+
+# Load the datasets
+file_paths = [
+    '/mnt/data/提取特征后的数据-时域-频域-材料1.xlsx',
+    '/mnt/data/提取特征后的数据-时域-频域-材料2.xlsx',
+    '/mnt/data/提取特征后的数据-时域-频域-材料3.xlsx',
+    '/mnt/data/提取特征后的数据-时域-频域-材料4.xlsx'
+]
+
+# Load all data into a single DataFrame
+data_frames = [pd.read_excel(file) for file in file_paths]
+
+# Adding material type based on the order of the files
+material_types = ['材料1', '材料2', '材料3', '材料44']
+
+# Adding material type to each DataFrame before concatenation
+for i, df in enumerate(data_frames):
+    df['Material'] = material_types[i]
+
+combined_data = pd.concat(data_frames, ignore_index=True)
+
+# Display basic information about the combined dataset
+combined_data.info()
+
+# Display the first few rows to understand the structure
+combined_data.head()
+
+
+
+
 # 数据预处理
 # 1. 编码类别特征 '励磁波形'
 label_encoder = LabelEncoder()
 combined_data['励磁波形'] = label_encoder.fit_transform(combined_data['励磁波形'])
 
+combined_data['Material'] = label_encoder.fit_transform(combined_data['Material'])
 # 2. 定义特征和目标值
 X = combined_data.drop(columns=['磁芯损耗，w/m3'])
 y = combined_data['磁芯损耗，w/m3']
